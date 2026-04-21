@@ -27,3 +27,41 @@ jobs:
         run: npm ci
       - name: Rodar testes
         run: npm test
+
+deploy-web:
+    name: Entrega Web e GitHub Pages
+    runs-on: ubuntu-latest
+    needs: test
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          
+      - name: Instalar Dependências
+        run: npm ci
+
+      - name: Injetar Variáveis de Ambiente
+        run: echo "EXPO_PUBLIC_TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}" > .env
+
+      - name: Build Web (Expo Export)
+        run: npx expo export --platform web
+
+      - name: Bypass Jekyll (Evita erro na pasta _expo)
+        run: touch dist/.nojekyll
+
+      - name: Upload do Artefato
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'dist'
+
+      - name: Deploy para GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
