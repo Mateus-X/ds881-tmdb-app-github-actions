@@ -28,7 +28,7 @@ jobs:
       - name: Rodar testes
         run: npm test
 
-deploy-web:
+  deploy-web:
     name: Entrega Web e GitHub Pages
     runs-on: ubuntu-latest
     needs: test
