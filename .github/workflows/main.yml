@@ -71,3 +71,59 @@ jobs:
       - name: Publicar no GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  build-android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instala depend.
+        run: npm ci
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: "gradle"
+
+      - name: Cria o .env
+        run: echo "EXPO_PUBLIC_TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}" > .env
+
+      - name: Expo Prebuild
+        run: npx expo prebuild --platform android
+
+      - name: Permissões
+        run: chmod +x android/gradlew
+
+      - name: Buid And.Release APK
+        run: |
+          cd android
+          ./gradlew assembleRelease
+
+      - name: APK Artefato Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+  create-release:
+    needs: [build-android, deploy-web]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixa apk
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release
+      - name: Cria GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Release Expo v${{ github.run_number }}
+          files: app-release.apk
+          body: "Build automático da aplicação Expo TMDB. Versão Web publicada no Pages."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
