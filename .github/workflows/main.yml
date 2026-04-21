@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   test:
+    name: Garantia de Qualidade (Testes)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,13 +29,10 @@ jobs:
       - name: Rodar testes
         run: npm test
 
-  deploy-web:
-    name: Entrega Web e GitHub Pages
+  build-web:
+    name: Build Web (Expo Export)
     runs-on: ubuntu-latest
-    needs: test
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    needs: test # Só faz o build se passar nos testes
     steps:
       - name: Checkout do Repositório
         uses: actions/checkout@v4
@@ -51,7 +49,7 @@ jobs:
       - name: Injetar Variáveis de Ambiente
         run: echo "EXPO_PUBLIC_TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}" > .env
 
-      - name: Build Web (Expo Export)
+      - name: Executar Build Web
         run: npx expo export --platform web
 
       - name: Bypass Jekyll (Evita erro na pasta _expo)
@@ -62,6 +60,14 @@ jobs:
         with:
           path: 'dist'
 
-      - name: Deploy para GitHub Pages
+  deploy-web:
+    name: Deploy para GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build-web # Só faz o deploy se o build terminar com sucesso
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar no GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
